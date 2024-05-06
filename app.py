@@ -226,8 +226,8 @@ def profile():
         
         g.user.username = form.username.data
         g.user.email = form.email.data
-        g.user.image_url = form.image_url.data
-        g.user.header_image_url = form.header_image_url.data
+        g.user.image_url = form.image_url.data or "/static/images/default-pic.png"
+        g.user.header_image_url = form.header_image_url.data or "/static/images/warbler-hero.jpg"
         g.user.location = form.location.data
         g.user.bio = form.bio.data
 
