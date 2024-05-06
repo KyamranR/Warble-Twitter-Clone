@@ -114,7 +114,7 @@ def logout():
     """Handle logout of user."""
 
     do_logout()
-    
+
     flash('Successfuly Logged out!')
     return redirect('/login')
 
@@ -315,8 +315,11 @@ def homepage():
     """
 
     if g.user:
+        followed_user_ids = [user.id for user in g.user.following] + [g.user.id]
+
         messages = (Message
                     .query
+                    .filter(Message.user_id.in_(followed_user_ids))
                     .order_by(Message.timestamp.desc())
                     .limit(100)
                     .all())
