@@ -1,6 +1,6 @@
 import os
 
-from flask import Flask, render_template, request, flash, redirect, session, g
+from flask import Flask, render_template, request, flash, redirect, session, url_for, g
 from flask_debugtoolbar import DebugToolbarExtension
 from sqlalchemy.exc import IntegrityError
 
@@ -113,7 +113,8 @@ def login():
 def logout():
     """Handle logout of user."""
 
-    session.pop('username', None)
+    do_logout()
+    
     flash('Successfuly Logged out!')
     return redirect('/login')
 
@@ -212,8 +213,28 @@ def stop_following(follow_id):
 @app.route('/users/profile', methods=["GET", "POST"])
 def profile():
     """Update profile for current user."""
+    if not g.user:
+        flash('Access unauthorized', 'danger')
+        return redirect('/')
+    
+    form = UserAddForm(obj=g.user)
 
-    # IMPLEMENT THIS
+    if form.validate_on_submit():
+        if not User.authenticate(g.user.username, form.password.data):
+            flash('Invalid password', 'danger')
+            return redirect('/')
+        
+        g.user.username = form.username.data
+        g.user.email = form.email.data
+        g.user.image_url = form.image_url.data
+        g.user.header_image_url = form.header_image_url.data
+        g.user.location = form.location.data
+        g.user.bio = form.bio.data
+
+        db.session.commit()
+        flash('Profile updated successfully!', 'success')
+        return redirect(url_for('users_show', user_id=g.user.id))
+    return render_template('/users/edit.html', form=form)
 
 
 @app.route('/users/delete', methods=["POST"])
