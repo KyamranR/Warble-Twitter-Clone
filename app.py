@@ -212,7 +212,7 @@ def stop_following(follow_id):
 
     return redirect(f"/users/{g.user.id}/following")
 
-@app.route('/users/<int:user_id>/likes', methods=['GET'])
+@app.route('/users/<int:user_id>/like', methods=['GET'])
 def show_likes(user_id):
     """Showing likes by the user"""
     if not g.user:
@@ -222,8 +222,8 @@ def show_likes(user_id):
     user = User.query.get_or_404(user_id)
     return render_template('/users/likes.html', user=user, likes=user.likes)
 
-@app.route('/messages/<int:message_id>/likes', methods=['GET', 'POST'])
-def add_likes(message_id):
+@app.route('/messages/<int:message_id>/like', methods=['POST'])
+def add_like(message_id):
     """Toggle likes when user like or unlikes message"""
 
     if not g.user:
