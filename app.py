@@ -1,6 +1,6 @@
 import os
 
-from flask import Flask, render_template, request, flash, redirect, session, url_for, g
+from flask import Flask, render_template, request, flash, redirect, session, url_for, g, abort
 from flask_debugtoolbar import DebugToolbarExtension
 from sqlalchemy.exc import IntegrityError
 
@@ -64,6 +64,8 @@ def signup():
     If the there already is a user with that username: flash message
     and re-present form.
     """
+    if CURR_USER_KEY in session:
+        del session[CURR_USER_KEY]
 
     form = UserAddForm()
 
@@ -115,7 +117,7 @@ def logout():
 
     do_logout()
 
-    flash('Successfuly Logged out!')
+    flash('Successfuly Logged out!', 'success')
     return redirect('/login')
 
 
@@ -153,7 +155,8 @@ def users_show(user_id):
                 .order_by(Message.timestamp.desc())
                 .limit(100)
                 .all())
-    return render_template('users/show.html', user=user, messages=messages)
+    likes = [message.id for message in user.likes]
+    return render_template('users/show.html', user=user, messages=messages, likes=likes)
 
 
 @app.route('/users/<int:user_id>/following')
@@ -209,6 +212,39 @@ def stop_following(follow_id):
 
     return redirect(f"/users/{g.user.id}/following")
 
+@app.route('/users/<int:user_id>/likes', methods=['GET'])
+def show_likes(user_id):
+    """Showing likes by the user"""
+    if not g.user:
+        flash('Access denied', 'danger')
+        return redirect('/')
+
+    user = User.query.get_or_404(user_id)
+    return render_template('/users/likes.html', user=user, likes=user.likes)
+
+@app.route('/messages/<int:message_id>/likes', methods=['GET', 'POST'])
+def add_likes(message_id):
+    """Toggle likes when user like or unlikes message"""
+
+    if not g.user:
+        flash('Access denied.', 'danger')
+        return redirect('/')
+    
+    liked_message = Message.query.get_or_404(message_id)
+    if liked_message.user_id == g.user.id:
+        return abort(403) 
+    
+    user_likes = g.user.likes
+
+    if liked_message in user_likes:
+        g.user.likes = [like for like in user_likes if like != liked_message]
+
+    else:
+        g.user.likes.append(liked_message)
+
+    db.session.commit()
+
+    return redirect('/')
 
 @app.route('/users/profile', methods=["GET", "POST"])
 def profile():
@@ -283,7 +319,7 @@ def messages_add():
 def messages_show(message_id):
     """Show a message."""
 
-    msg = Message.query.get(message_id)
+    msg = Message.query.get_or_404(message_id)
     return render_template('messages/show.html', message=msg)
 
 
@@ -323,8 +359,10 @@ def homepage():
                     .order_by(Message.timestamp.desc())
                     .limit(100)
                     .all())
+        
+        liked_msg_ids = [msg.id for msg in g.user.likes]
 
-        return render_template('home.html', messages=messages)
+        return render_template('home.html', messages=messages, likes=liked_msg_ids)
 
     else:
         return render_template('home-anon.html')
