@@ -222,7 +222,7 @@ def show_likes(user_id):
     user = User.query.get_or_404(user_id)
     return render_template('/users/likes.html', user=user, likes=user.likes)
 
-@app.route('/messages/<int:message_id>/like', methods=['POST'])
+@app.route('/users/add_like/<int:message_id>', methods=['POST'])
 def add_like(message_id):
     """Toggle likes when user like or unlikes message"""
 
@@ -232,7 +232,8 @@ def add_like(message_id):
     
     liked_message = Message.query.get_or_404(message_id)
     if liked_message.user_id == g.user.id:
-        return abort(403) 
+        flash("Can't like your own message.", 'danger')
+        return redirect('/')
     
     user_likes = g.user.likes
 
