@@ -54,6 +54,8 @@ class MessageViewTestCase(TestCase):
                                     email="test@test.com",
                                     password="testuser",
                                     image_url=None)
+        self.testuser_id = 222
+        self.testuser.id = self.testuser_id
 
         db.session.commit()
 
@@ -85,3 +87,67 @@ class MessageViewTestCase(TestCase):
 
             msg = Message.query.one()
             self.assertEqual(msg.text, "Hello")
+
+
+    def test_add_no_session(self):
+        """Testing without adding to the session"""
+
+        with self.client as client:
+            resp = client.post('/messages/new', data={'text': 'Hello'}, follow_redirects=True)
+            self.assertEqual(resp.status_code, 200)
+            self.assertIn('Access unauthorized', str(resp.data))
+
+    def test_delete_message(self):
+        """Deleting message when logged in"""
+
+        message = Message(
+            id = 111,
+            text = 'test message',
+            user_id = self.testuser_id
+        )
+
+        db.session.add(message)
+        db.session.commit()
+
+        with self.client as client:
+            with client.session_transaction() as sess:
+                sess[CURR_USER_KEY] = self.testuser.id
+
+            resp = client.post('/messages/111/delete', follow_redirects=True)
+            self.assertEqual(resp.status_code, 200)
+            
+            msg = Message.query.get(111)
+            self.assertIsNone(msg)
+
+    def test_loggedout_message_add(self):
+        """Testing adding message without logging in"""
+
+        with self.client as client:
+            with client.session_transaction() as sess:
+                sess[CURR_USER_KEY] = 1233
+
+            resp = client.post('/message/new', data={'text': 'hello'}, follow_redirects=True)
+            self.assertEqual(resp.status_code, 404)
+            
+
+    def test_loggedout_delete_message(self):
+        """Testing deleting message without logging in"""
+
+        message = Message(
+            id = 123,
+            text = 'delte message',
+            user_id = self.testuser_id
+        )
+
+        db.session.add(message)
+        db.session.commit()
+
+        with self.client as client:
+            with client.session_transaction() as sess:
+                sess[CURR_USER_KEY] = 2222
+
+            resp = client.post('/message/123/delete', follow_redirects=True)
+            self.assertEqual(resp.status_code, 404)
+            
+
+    
