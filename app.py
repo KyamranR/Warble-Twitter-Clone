@@ -5,7 +5,7 @@ from flask_debugtoolbar import DebugToolbarExtension
 from sqlalchemy.exc import IntegrityError
 
 from forms import UserAddForm, LoginForm, MessageForm
-from models import db, connect_db, User, Message
+from models import db, connect_db, User, Message, Likes
 
 CURR_USER_KEY = "curr_user"
 
@@ -235,14 +235,19 @@ def add_like(message_id):
         flash("Can't like your own message.", 'danger')
         return redirect('/')
     
-    user_likes = g.user.likes
+    like = Likes.query.filter_by(user_id=g.user.id, message_id=message_id).first()
 
-    if liked_message in user_likes:
-        g.user.likes = [like for like in user_likes if like != liked_message]
+    if like:
+        db.session.delete(like)
+        db.session.commit()
+        flash('Message unliked', 'success')
 
     else:
-        g.user.likes.append(liked_message)
-
+        like = Likes(user_id=g.user.id, message_id=message_id)
+        db.session.add(like)
+        db.session.commit()
+        flash('Message liked', 'success')
+        
     db.session.commit()
 
     return redirect('/')
